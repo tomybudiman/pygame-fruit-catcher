@@ -4,3 +4,10 @@ build/
 dist/
 *.spec
 .DS_Store
+
+# Berkas pribadi dan pengaturan IDE (tetap ada di lokal, tidak masuk repo publik)
+.idea/
+CLAUDE.md
+docs/*.pdf
+docs/*.docx
+docs/*.txt
