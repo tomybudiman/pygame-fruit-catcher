@@ -22,7 +22,7 @@ class AssetManager:
         try:
             image = pygame.image.load(path_aset(relatif)).convert_alpha()
         except (pygame.error, FileNotFoundError) as e:
-            print(f"[AssetManager] Gagal memuat gambar '{relatif}': {e}")
+            print(f"[AssetManager] Gagal memuat gambar '{relatif}': {e}", file=sys.stderr)
             # Kotak pengganti supaya game tetap jalan dan aset yang hilang terlihat jelas.
             image = pygame.Surface(size or (40, 40))
             image.fill((255, 0, 255))
@@ -38,7 +38,7 @@ class AssetManager:
         try:
             sound = pygame.mixer.Sound(path_aset(relatif))
         except (pygame.error, FileNotFoundError) as e:
-            print(f"[AssetManager] Gagal memuat suara '{relatif}': {e}")
+            print(f"[AssetManager] Gagal memuat suara '{relatif}': {e}", file=sys.stderr)
             sound = None
         self._sounds[name] = sound
         return sound
@@ -53,7 +53,7 @@ class AssetManager:
             pygame.mixer.music.load(path_aset(relatif))
             pygame.mixer.music.play(loops)
         except pygame.error as e:
-            print(f"[AssetManager] Gagal memutar musik '{relatif}': {e}")
+            print(f"[AssetManager] Gagal memutar musik '{relatif}': {e}", file=sys.stderr)
 
     def stop_music(self):
         if pygame.mixer.get_init():

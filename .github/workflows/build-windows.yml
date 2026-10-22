@@ -1,0 +1,65 @@
+name: Build Windows exe
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    env:
+      # Runner tidak punya layar dan kartu suara; driver dummy membuat pygame tetap bisa jalan.
+      SDL_VIDEODRIVER: dummy
+      SDL_AUDIODRIVER: dummy
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pygame==2.6.1 pyinstaller
+          python -m pip install --no-deps pygwidgets==1.1.2
+
+      - name: Run tests
+        run: python -m unittest discover -s tests -t . -v
+
+      - name: Build main.exe (perintah dari soal)
+        run: pyinstaller --onefile --windowed --add-data "assets;assets" main.py
+
+      - name: Build console copy for checking asset errors
+        run: pyinstaller --onefile --add-data "assets;assets" --name main_console --distpath dist-check --workpath build-check main.py
+
+      - name: Smoke test from a folder without source code
+        shell: pwsh
+        run: |
+          $dir = Join-Path $env:RUNNER_TEMP "exe-test"
+          New-Item -ItemType Directory -Force $dir | Out-Null
+          Copy-Item dist\main.exe, dist-check\main_console.exe $dir
+          $err = Join-Path $dir "stderr.txt"
+
+          $game = Start-Process (Join-Path $dir "main.exe") -WorkingDirectory $dir -PassThru
+          $check = Start-Process (Join-Path $dir "main_console.exe") -WorkingDirectory $dir -PassThru `
+            -RedirectStandardError $err -RedirectStandardOutput (Join-Path $dir "stdout.txt")
+          Start-Sleep -Seconds 10
+
+          $failures = @()
+          foreach ($p in @($game, $check)) {
+            if ($p.HasExited) { $failures += "$($p.ProcessName) berhenti sendiri (exit code $($p.ExitCode))" }
+            else { Stop-Process -Id $p.Id -Force }
+          }
+          Start-Sleep -Seconds 1
+          $log = Get-Content $err -Raw
+          if ($log) { Write-Output "stderr:"; Write-Output $log }
+          if ($log -match "Gagal") { $failures += "Ada aset yang gagal dimuat" }
+          if ($failures) { throw ($failures -join "; ") }
+          Write-Output "OK: main.exe berjalan 10 detik dari folder lain tanpa error aset"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fruit-catcher-windows
+          path: dist/main.exe
